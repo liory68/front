@@ -13,7 +13,7 @@
     "socket.io": "^4.7.5",
     "socket.io-client": "^4.7.5",
     "web-vitals": "^2.1.4",
-    "partykit": "^0.0.39"
+    "partykit": "^0.0.40"
   },
   "scripts": {
     "start": "react-scripts start",
