@@ -5,7 +5,7 @@ import Home from './components/Home';
 import GameRoom from './components/GameRoom';
 import './App.css';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://your-backend-url.vercel.app';
 
 const socket = io(BACKEND_URL, {
   transports: ['websocket', 'polling'],
