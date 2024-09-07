@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import PlayerCircle from './PlayerCircle';
-import { PartySocket } from "partykit/client";
+import * as PartySocket from "partykit/client";
 
 function GameRoom({ host }) {
   const { gameId } = useParams();
@@ -18,7 +18,7 @@ function GameRoom({ host }) {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const newSocket = new PartySocket({
+    const newSocket = new PartySocket.PartySocket({
       host: host,
       room: gameId
     });
