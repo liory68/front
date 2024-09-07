@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import PlayerCircle from './PlayerCircle';
+import * as PartySocket from "partykit/client";
 
-function GameRoom({ socket }) {
+function GameRoom({ host }) {
   const { gameId } = useParams();
   const [searchParams] = useSearchParams();
   const playerName = searchParams.get('name');
@@ -14,45 +15,56 @@ function GameRoom({ socket }) {
   const [penalty, setPenalty] = useState(0);
   const [gameEnded, setGameEnded] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [socket, setSocket] = useState(null);
+
+  useEffect(() => {
+    const newSocket = new PartySocket.PartySocket({
+      host: host,
+      room: gameId
+    });
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.close();
+    };
+  }, [host, gameId]);
 
   const joinGame = useCallback(() => {
-    if (playerName && !currentPlayer) {
+    if (playerName && !currentPlayer && socket) {
       const playerData = { name: playerName, color: getRandomColor() };
       socket.send(JSON.stringify({ type: 'joinGame', payload: { gameId, ...playerData } }));
     }
   }, [gameId, playerName, currentPlayer, socket]);
 
   useEffect(() => {
-    joinGame();
+    if (socket) {
+      joinGame();
 
-    socket.addEventListener('message', (event) => {
-      const data = JSON.parse(event.data);
-      switch (data.type) {
-        case 'playerJoined':
-          setPlayers(data.players);
-          break;
-        case 'gameJoined':
-          setCurrentPlayer(data.player);
-          setQuestion(data.currentQuestion.question);
-          break;
-        case 'newQuestion':
-          setQuestion(data.question.question);
-          setUserAnswer('');
-          break;
-        case 'playerUpdated':
-          setPlayers(data.players);
-          break;
-        case 'gameEnded':
-          setGameEnded(true);
-          setLeaderboard(data.leaderboard);
-          break;
-        // Handle other message types
-      }
-    });
-
-    return () => {
-      socket.removeEventListener('message');
-    };
+      socket.addEventListener('message', (event) => {
+        const data = JSON.parse(event.data);
+        switch (data.type) {
+          case 'playerJoined':
+            setPlayers(data.players);
+            break;
+          case 'gameJoined':
+            setCurrentPlayer(data.player);
+            setQuestion(data.currentQuestion.question);
+            break;
+          case 'newQuestion':
+            setQuestion(data.question.question);
+            setUserAnswer('');
+            break;
+          case 'playerUpdated':
+            setPlayers(data.players);
+            break;
+          case 'gameEnded':
+            setGameEnded(true);
+            setLeaderboard(data.leaderboard);
+            break;
+          // Handle other message types
+        }
+      });
+    }
   }, [socket, joinGame]);
 
   useEffect(() => {
