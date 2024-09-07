@@ -1,29 +1,15 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import io from 'socket.io-client';
+import { createPartySocket } from "partykit/client";
 import Home from './components/Home';
 import GameRoom from './components/GameRoom';
 import './App.css';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://your-backend-url.vercel.app';
+const PARTYKIT_HOST = process.env.REACT_APP_PARTYKIT_HOST || "localhost:1999";
 
-const socket = io(BACKEND_URL, {
-  transports: ['websocket', 'polling'],
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  withCredentials: true,
-});
-
-socket.on('connect', () => {
-  console.log('Connected to server');
-});
-
-socket.on('connect_error', (error) => {
-  console.error('Connection error:', error);
-});
-
-socket.on('disconnect', (reason) => {
-  console.log('Disconnected:', reason);
+const socket = createPartySocket({
+  host: PARTYKIT_HOST,
+  room: "game",
 });
 
 function App() {

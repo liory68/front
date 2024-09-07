@@ -18,45 +18,42 @@ function GameRoom({ socket }) {
   const joinGame = useCallback(() => {
     if (playerName && !currentPlayer) {
       const playerData = { name: playerName, color: getRandomColor() };
-      socket.emit('joinGame', gameId, playerData, (response) => {
-        if (response.success) {
-          setCurrentPlayer(response.player);
-          setQuestion(response.question.question);
-        } else {
-          alert('Failed to join game: ' + (response.error || 'Unknown error'));
-        }
-      });
+      socket.send(JSON.stringify({ type: 'joinGame', payload: { gameId, ...playerData } }));
     }
   }, [gameId, playerName, currentPlayer, socket]);
 
   useEffect(() => {
     joinGame();
 
-    socket.on('playerList', (updatedPlayers) => {
-      setPlayers(updatedPlayers);
-      // Check if the current player is still in the game
-      if (currentPlayer && !updatedPlayers.some(p => p._id === currentPlayer._id)) {
-        setCurrentPlayer(null);
-        // Optionally, redirect to home or show a message
+    socket.addEventListener('message', (event) => {
+      const data = JSON.parse(event.data);
+      switch (data.type) {
+        case 'playerJoined':
+          setPlayers(data.players);
+          break;
+        case 'gameJoined':
+          setCurrentPlayer(data.player);
+          setQuestion(data.currentQuestion.question);
+          break;
+        case 'newQuestion':
+          setQuestion(data.question.question);
+          setUserAnswer('');
+          break;
+        case 'playerUpdated':
+          setPlayers(data.players);
+          break;
+        case 'gameEnded':
+          setGameEnded(true);
+          setLeaderboard(data.leaderboard);
+          break;
+        // Handle other message types
       }
     });
 
-    socket.on('newQuestion', (newQuestion) => {
-      setQuestion(newQuestion.question);
-      setUserAnswer('');
-    });
-
-    socket.on('gameEnded', (finalLeaderboard) => {
-      setGameEnded(true);
-      setLeaderboard(finalLeaderboard);
-    });
-
     return () => {
-      socket.off('playerList');
-      socket.off('newQuestion');
-      socket.off('gameEnded');
+      socket.removeEventListener('message');
     };
-  }, [socket, currentPlayer, gameId, playerName, joinGame]);
+  }, [socket, joinGame]);
 
   useEffect(() => {
     if (penalty > 0) {
@@ -70,32 +67,12 @@ function GameRoom({ socket }) {
   const handleAnswerSubmit = (e) => {
     e.preventDefault();
     if (currentPlayer && penalty === 0) {
-      socket.emit('submitAnswer', {
-        gameId,
-        playerId: currentPlayer._id,
-        answer: parseInt(userAnswer)
-      }, (response) => {
-        if (response.success) {
-          setFeedback(response.correct ? 'correct' : 'incorrect');
-          if (!response.correct) {
-            setPenalty(5);
-          }
-          setTimeout(() => setFeedback(null), 1000);
-        }
-        setUserAnswer('');
-      });
+      socket.send(JSON.stringify({ type: 'submitAnswer', payload: { gameId, playerId: currentPlayer._id, answer: parseInt(userAnswer) } }));
     }
   };
 
   const handlePlayAgain = () => {
-    socket.emit('playAgain', gameId, (response) => {
-      if (response.success) {
-        setGameEnded(false);
-        setQuestion(response.question.question);
-      } else {
-        alert('Failed to start new game: ' + (response.error || 'Unknown error'));
-      }
-    });
+    socket.send(JSON.stringify({ type: 'playAgain', payload: { gameId } }));
   };
 
   if (gameEnded) {
