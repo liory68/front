@@ -24,7 +24,10 @@ export default class GameParty extends Party {
 
   onConnect(conn, ctx) {
     console.log("New connection", conn.id);
-    conn.send(JSON.stringify({ type: 'serverMessage', message: 'Hello from server' }));
+    conn.send(JSON.stringify({ 
+      type: 'serverMessage', 
+      message: 'Hello from server' 
+    }));
   }
 
   onMessage(message, sender) {

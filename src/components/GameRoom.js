@@ -32,26 +32,13 @@ function GameRoom() {
     });
 
     newSocket.addEventListener('message', (event) => {
-      const data = JSON.parse(event.data);
-      console.log("Received message:", data);
-      switch (data.type) {
-        case 'gameJoined':
-          setCurrentPlayer(data.player);
-          setCurrentQuestion(data.currentQuestion);
-          break;
-        case 'playerList':
-          setPlayers(data.players);
-          break;
-        case 'newQuestion':
-          setCurrentQuestion(data.question);
-          setUserAnswer('');
-          break;
-        case 'gameEnded':
-          setGameEnded(true);
-          setLeaderboard(data.leaderboard);
-          break;
-        default:
-          console.log("Unhandled message type:", data.type);
+      console.log("Received message:", event.data);
+      try {
+        const data = JSON.parse(event.data);
+        handleJsonMessage(data);
+      } catch (error) {
+        // If parsing fails, treat it as a plain text message
+        console.log("Received plain text message:", event.data);
       }
     });
 
@@ -61,6 +48,28 @@ function GameRoom() {
       newSocket.close();
     };
   }, [gameId, playerName]);
+
+  const handleJsonMessage = (data) => {
+    switch (data.type) {
+      case 'gameJoined':
+        setCurrentPlayer(data.player);
+        setCurrentQuestion(data.currentQuestion);
+        break;
+      case 'playerList':
+        setPlayers(data.players);
+        break;
+      case 'newQuestion':
+        setCurrentQuestion(data.question);
+        setUserAnswer('');
+        break;
+      case 'gameEnded':
+        setGameEnded(true);
+        setLeaderboard(data.leaderboard);
+        break;
+      default:
+        console.log("Unhandled message type:", data.type);
+    }
+  };
 
   const handleAnswerSubmit = (e) => {
     e.preventDefault();
