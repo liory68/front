@@ -40,7 +40,6 @@ function GameRoom() {
         handleJsonMessage(data);
       } catch (error) {
         console.error("Error parsing message:", error);
-        console.log("Received plain text message:", event.data);
       }
     });
 
@@ -54,16 +53,20 @@ function GameRoom() {
   const handleJsonMessage = (data) => {
     console.log("Handling JSON message:", data);
     switch (data.type) {
+      case 'serverMessage':
+        console.log("Server message:", data.message);
+        break;
       case 'gameJoined':
         console.log("Game joined, setting current player and question");
         setCurrentPlayer(data.player);
         setCurrentQuestion(data.currentQuestion);
         break;
       case 'playerList':
-        console.log("Updating player list");
+        console.log("Updating player list", data.players);
         setPlayers(data.players);
         break;
       case 'newQuestion':
+        console.log("New question received", data.question);
         setCurrentQuestion(data.question);
         setUserAnswer('');
         break;
@@ -124,6 +127,12 @@ function GameRoom() {
             isCurrentPlayer={currentPlayer && player.id === currentPlayer.id}
           />
         ))}
+      </div>
+      <div>
+        <h3>Debug Info:</h3>
+        <p>Current Player: {JSON.stringify(currentPlayer)}</p>
+        <p>Players: {JSON.stringify(players)}</p>
+        <p>Current Question: {JSON.stringify(currentQuestion)}</p>
       </div>
     </div>
   );

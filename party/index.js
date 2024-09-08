@@ -8,6 +8,7 @@ export default class GameParty extends Party {
   }
 
   async onStart() {
+    console.log("Party started, fetching questions");
     await this.fetchQuestions();
   }
 
@@ -64,7 +65,7 @@ export default class GameParty extends Party {
     console.log("Sending gameJoined message to player");
     sender.send(JSON.stringify({ type: 'gameJoined', player, currentQuestion: game.currentQuestion }));
     console.log("Broadcasting playerList");
-    this.party.broadcast(JSON.stringify({ type: 'playerList', players: game.players }), [sender.id]);
+    this.party.broadcast(JSON.stringify({ type: 'playerList', players: game.players }));
   }
 
   submitAnswer(payload, sender) {
