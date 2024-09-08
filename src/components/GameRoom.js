@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import io from 'socket.io-client';
+import { usePartySocket } from "partysocket/react";
 import PlayerCircle from './PlayerCircle';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://back-ten-lilac.vercel.app';
+const PARTYKIT_HOST = process.env.REACT_APP_PARTYKIT_HOST || "backend-party.liory68.partykit.dev";
 
 function GameRoom() {
   const { gameId } = useParams();
   const [searchParams] = useSearchParams();
   const playerName = searchParams.get('name');
-  const [socket, setSocket] = useState(null);
   const [players, setPlayers] = useState([]);
   const [currentPlayer, setCurrentPlayer] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState({ question: '', answer: null });
@@ -17,51 +16,47 @@ function GameRoom() {
   const [gameEnded, setGameEnded] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
 
-  useEffect(() => {
-    const newSocket = io(BACKEND_URL, {
-      transports: ['websocket', 'polling'],
-      upgrade: false,
-      forceNew: true,
-      reconnectionAttempts: 5,
-      timeout: 10000,
-    });
-
-    newSocket.on('connect_error', (error) => {
-      console.error('Connection Error:', error);
-    });
-
-    newSocket.on('connect', () => {
-      console.log('Connected to server');
-      newSocket.emit('joinGame', { gameId, playerName });
-    });
-
-    newSocket.on('gameJoined', ({ player, currentQuestion }) => {
-      setCurrentPlayer(player);
-      setCurrentQuestion(currentQuestion);
-    });
-
-    newSocket.on('playerList', (players) => {
-      setPlayers(players);
-    });
-
-    newSocket.on('newQuestion', (question) => {
-      setCurrentQuestion(question);
-      setUserAnswer('');
-    });
-
-    newSocket.on('gameEnded', (leaderboard) => {
-      setGameEnded(true);
-      setLeaderboard(leaderboard);
-    });
-
-    return () => newSocket.disconnect();
-  }, [gameId, playerName]);
+  const socket = usePartySocket({
+    host: PARTYKIT_HOST,
+    room: gameId,
+    onOpen: () => {
+      console.log("Connected to game room");
+      socket.send(JSON.stringify({ 
+        type: 'joinGame', 
+        payload: { gameId, name: playerName, color: getRandomColor() } 
+      }));
+    },
+    onMessage: (event) => {
+      const data = JSON.parse(event.data);
+      console.log("Received message:", data);
+      switch (data.type) {
+        case 'gameJoined':
+          setCurrentPlayer(data.player);
+          setCurrentQuestion(data.currentQuestion);
+          break;
+        case 'playerList':
+          setPlayers(data.players);
+          break;
+        case 'newQuestion':
+          setCurrentQuestion(data.question);
+          setUserAnswer('');
+          break;
+        case 'gameEnded':
+          setGameEnded(true);
+          setLeaderboard(data.leaderboard);
+          break;
+        default:
+          console.log("Unhandled message type:", data.type);
+      }
+    }
+  });
 
   const handleAnswerSubmit = (e) => {
     e.preventDefault();
-    if (socket) {
-      socket.emit('submitAnswer', { gameId, answer: parseInt(userAnswer) });
-    }
+    socket.send(JSON.stringify({
+      type: 'submitAnswer',
+      payload: { gameId, answer: parseInt(userAnswer) }
+    }));
   };
 
   if (gameEnded) {
@@ -105,6 +100,10 @@ function GameRoom() {
       </div>
     </div>
   );
+}
+
+function getRandomColor() {
+  return '#' + Math.floor(Math.random()*16777215).toString(16);
 }
 
 export default GameRoom;
