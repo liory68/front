@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { usePartySocket } from "partysocket/react";
+import { PartySocket } from "partysocket";
 import PlayerCircle from './PlayerCircle';
 
 const PARTYKIT_HOST = process.env.REACT_APP_PARTYKIT_HOST || "backend-party.liory68.partykit.dev";
@@ -15,18 +15,23 @@ function GameRoom() {
   const [userAnswer, setUserAnswer] = useState('');
   const [gameEnded, setGameEnded] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [socket, setSocket] = useState(null);
 
-  const socket = usePartySocket({
-    host: PARTYKIT_HOST,
-    room: gameId,
-    onOpen: () => {
+  useEffect(() => {
+    const newSocket = new PartySocket({
+      host: PARTYKIT_HOST,
+      room: gameId
+    });
+
+    newSocket.addEventListener('open', () => {
       console.log("Connected to game room");
-      socket.send(JSON.stringify({ 
+      newSocket.send(JSON.stringify({ 
         type: 'joinGame', 
         payload: { gameId, name: playerName, color: getRandomColor() } 
       }));
-    },
-    onMessage: (event) => {
+    });
+
+    newSocket.addEventListener('message', (event) => {
       const data = JSON.parse(event.data);
       console.log("Received message:", data);
       switch (data.type) {
@@ -48,15 +53,23 @@ function GameRoom() {
         default:
           console.log("Unhandled message type:", data.type);
       }
-    }
-  });
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.close();
+    };
+  }, [gameId, playerName]);
 
   const handleAnswerSubmit = (e) => {
     e.preventDefault();
-    socket.send(JSON.stringify({
-      type: 'submitAnswer',
-      payload: { gameId, answer: parseInt(userAnswer) }
-    }));
+    if (socket) {
+      socket.send(JSON.stringify({
+        type: 'submitAnswer',
+        payload: { gameId, answer: parseInt(userAnswer) }
+      }));
+    }
   };
 
   if (gameEnded) {
