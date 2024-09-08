@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { PartySocket } from "partysocket";
+import PartySocket from "partysocket";
 import PlayerCircle from './PlayerCircle';
 
 const PARTYKIT_HOST = process.env.REACT_APP_PARTYKIT_HOST || "backend-party.liory68.partykit.dev";
