@@ -4,66 +4,69 @@ export default class GameParty extends Party {
   constructor(party) {
     super(party);
     this.games = new Map();
+    this.questions = [];
+  }
+
+  async onStart() {
+    await this.fetchQuestions();
+  }
+
+  async fetchQuestions() {
+    try {
+      const response = await fetch('https://back-ten-lilac.vercel.app/questions/random');
+      const question = await response.json();
+      this.questions = [question];
+      console.log("Fetched question:", question);
+    } catch (error) {
+      console.error("Error fetching questions:", error);
+    }
   }
 
   onConnect(conn, ctx) {
     console.log("New connection", conn.id);
+    conn.send(JSON.stringify({ type: 'serverMessage', message: 'Hello from server' }));
   }
 
   onMessage(message, sender) {
-    const { type, payload } = JSON.parse(message);
-    
-    switch (type) {
-      case 'createGame':
-        this.createGame(payload, sender);
-        break;
-      case 'joinGame':
-        this.joinGame(payload, sender);
-        break;
-      case 'submitAnswer':
-        this.submitAnswer(payload, sender);
-        break;
-      // Add other game logic here
+    console.log("Received message:", message);
+    try {
+      const data = JSON.parse(message);
+      switch (data.type) {
+        case 'joinGame':
+          this.joinGame(data.payload, sender);
+          break;
+        case 'submitAnswer':
+          this.submitAnswer(data.payload, sender);
+          break;
+        default:
+          console.log("Unhandled message type:", data.type);
+      }
+    } catch (error) {
+      console.error("Error processing message:", error);
+      sender.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
     }
-  }
-
-  createGame(payload, sender) {
-    const { playerName, color } = payload;
-    const gameId = Math.random().toString(36).substring(7);
-    this.games.set(gameId, {
-      players: [{ id: sender.id, name: playerName, color, score: 0 }],
-      currentQuestion: this.getRandomQuestion(),
-      questionCount: 0
-    });
-    sender.send(JSON.stringify({ type: 'gameCreated', gameId, player: this.games.get(gameId).players[0] }));
   }
 
   joinGame(payload, sender) {
-    const { gameId, playerName, color } = payload;
-    const game = this.games.get(gameId);
+    const { gameId, name, color } = payload;
+    let game = this.games.get(gameId);
     if (!game) {
-      sender.send(JSON.stringify({ type: 'error', message: 'Game not found' }));
-      return;
+      game = { players: [], currentQuestion: this.getRandomQuestion(), questionCount: 0 };
+      this.games.set(gameId, game);
     }
-    const player = { id: sender.id, name: playerName, color, score: 0 };
+    const player = { id: sender.id, name, color, score: 0 };
     game.players.push(player);
-    this.games.set(gameId, game);
-    this.party.broadcast(JSON.stringify({ type: 'playerJoined', gameId, players: game.players }));
     sender.send(JSON.stringify({ type: 'gameJoined', player, currentQuestion: game.currentQuestion }));
+    this.party.broadcast(JSON.stringify({ type: 'playerList', players: game.players }));
   }
 
   submitAnswer(payload, sender) {
     const { gameId, answer } = payload;
     const game = this.games.get(gameId);
-    if (!game) {
-      sender.send(JSON.stringify({ type: 'error', message: 'Game not found' }));
-      return;
-    }
+    if (!game) return;
     const player = game.players.find(p => p.id === sender.id);
-    if (!player) {
-      sender.send(JSON.stringify({ type: 'error', message: 'Player not found' }));
-      return;
-    }
+    if (!player) return;
+    
     if (answer === game.currentQuestion.answer) {
       player.score += 1;
       game.questionCount += 1;
@@ -71,21 +74,23 @@ export default class GameParty extends Party {
         this.endGame(gameId);
       } else {
         game.currentQuestion = this.getRandomQuestion();
-        this.party.broadcast(JSON.stringify({ type: 'newQuestion', gameId, question: game.currentQuestion }));
+        this.party.broadcast(JSON.stringify({ type: 'newQuestion', question: game.currentQuestion }));
       }
     }
-    this.party.broadcast(JSON.stringify({ type: 'playerUpdated', gameId, players: game.players }));
+    this.party.broadcast(JSON.stringify({ type: 'playerList', players: game.players }));
   }
 
   endGame(gameId) {
     const game = this.games.get(gameId);
     const sortedPlayers = game.players.sort((a, b) => b.score - a.score);
-    this.party.broadcast(JSON.stringify({ type: 'gameEnded', gameId, leaderboard: sortedPlayers }));
+    this.party.broadcast(JSON.stringify({ type: 'gameEnded', leaderboard: sortedPlayers }));
     this.games.delete(gameId);
   }
 
   getRandomQuestion() {
-    // Implement your question generation logic here
-    return { question: "What is 2 + 2?", answer: 4 };
+    if (this.questions.length === 0) {
+      return { question: "Loading questions...", answer: 0 };
+    }
+    return this.questions[0];
   }
 }
