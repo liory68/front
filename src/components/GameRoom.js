@@ -20,9 +20,15 @@ function GameRoom() {
   useEffect(() => {
     const newSocket = io(BACKEND_URL, {
       transports: ['websocket', 'polling'],
-      withCredentials: true
+      upgrade: false,
+      forceNew: true,
+      reconnectionAttempts: 5,
+      timeout: 10000,
     });
-    setSocket(newSocket);
+
+    newSocket.on('connect_error', (error) => {
+      console.error('Connection Error:', error);
+    });
 
     newSocket.on('connect', () => {
       console.log('Connected to server');
@@ -48,7 +54,7 @@ function GameRoom() {
       setLeaderboard(leaderboard);
     });
 
-    return () => newSocket.close();
+    return () => newSocket.disconnect();
   }, [gameId, playerName]);
 
   const handleAnswerSubmit = (e) => {
