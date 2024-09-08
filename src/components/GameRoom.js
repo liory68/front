@@ -18,7 +18,10 @@ function GameRoom() {
   const [leaderboard, setLeaderboard] = useState([]);
 
   useEffect(() => {
-    const newSocket = io(BACKEND_URL);
+    const newSocket = io(BACKEND_URL, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true
+    });
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
