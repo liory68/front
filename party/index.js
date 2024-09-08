@@ -14,8 +14,10 @@ export default class GameParty extends Party {
 
   async fetchQuestions() {
     try {
+      console.log("Fetching questions from API");
       const response = await fetch('https://back-ten-lilac.vercel.app/questions/random');
       const question = await response.json();
+      console.log("API response:", question);
       this.questions = [question];
       console.log("Fetched question:", question);
     } catch (error) {
@@ -35,8 +37,10 @@ export default class GameParty extends Party {
     console.log("Received message:", message);
     try {
       const data = JSON.parse(message);
+      console.log("Parsed message data:", data);
       switch (data.type) {
         case 'joinGame':
+          console.log("Calling joinGame with payload:", data.payload);
           this.joinGame(data.payload, sender);
           break;
         case 'submitAnswer':
@@ -62,9 +66,9 @@ export default class GameParty extends Party {
     }
     const player = { id: sender.id, name, color, score: 0 };
     game.players.push(player);
-    console.log("Sending gameJoined message to player");
+    console.log("Sending gameJoined message to player:", { type: 'gameJoined', player, currentQuestion: game.currentQuestion });
     sender.send(JSON.stringify({ type: 'gameJoined', player, currentQuestion: game.currentQuestion }));
-    console.log("Broadcasting playerList");
+    console.log("Broadcasting playerList:", { type: 'playerList', players: game.players });
     this.party.broadcast(JSON.stringify({ type: 'playerList', players: game.players }));
   }
 
@@ -101,6 +105,8 @@ export default class GameParty extends Party {
       console.log("No questions available, returning placeholder");
       return { question: "Loading questions...", answer: 0 };
     }
-    return this.questions[0];
+    const randomQuestion = this.questions[0];
+    console.log("Returning random question:", randomQuestion);
+    return randomQuestion;
   }
 }

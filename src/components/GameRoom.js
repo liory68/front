@@ -26,10 +26,12 @@ function GameRoom() {
 
     newSocket.addEventListener('open', () => {
       console.log("Socket opened, sending joinGame message");
-      newSocket.send(JSON.stringify({ 
+      const joinMessage = JSON.stringify({ 
         type: 'joinGame', 
         payload: { gameId, name: playerName, color: getRandomColor() } 
-      }));
+      });
+      console.log("Sending join message:", joinMessage);
+      newSocket.send(joinMessage);
     });
 
     newSocket.addEventListener('message', (event) => {
@@ -107,26 +109,32 @@ function GameRoom() {
       <h2>Game Room: {gameId}</h2>
       <div className="game-area">
         <h3>Current Question:</h3>
-        <p className="question">{currentQuestion.question}</p>
-        <form onSubmit={handleAnswerSubmit} className="answer-form">
-          <input
-            type="number"
-            value={userAnswer}
-            onChange={(e) => setUserAnswer(e.target.value)}
-            placeholder="Enter your answer"
-            className="answer-input"
-          />
-          <button type="submit" className="submit-answer-btn">Submit Answer</button>
-        </form>
+        <p className="question">{currentQuestion.question || "Waiting for question..."}</p>
+        {currentQuestion.question && (
+          <form onSubmit={handleAnswerSubmit} className="answer-form">
+            <input
+              type="number"
+              value={userAnswer}
+              onChange={(e) => setUserAnswer(e.target.value)}
+              placeholder="Enter your answer"
+              className="answer-input"
+            />
+            <button type="submit" className="submit-answer-btn">Submit Answer</button>
+          </form>
+        )}
       </div>
       <div className="player-list">
-        {players.map(player => (
-          <PlayerCircle
-            key={player.id}
-            player={player}
-            isCurrentPlayer={currentPlayer && player.id === currentPlayer.id}
-          />
-        ))}
+        {players.length > 0 ? (
+          players.map(player => (
+            <PlayerCircle
+              key={player.id}
+              player={player}
+              isCurrentPlayer={currentPlayer && player.id === currentPlayer.id}
+            />
+          ))
+        ) : (
+          <p>Waiting for players to join...</p>
+        )}
       </div>
       <div>
         <h3>Debug Info:</h3>
