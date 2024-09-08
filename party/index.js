@@ -51,16 +51,20 @@ export default class GameParty extends Party {
   }
 
   joinGame(payload, sender) {
+    console.log("Joining game with payload:", payload);
     const { gameId, name, color } = payload;
     let game = this.games.get(gameId);
     if (!game) {
+      console.log("Creating new game for gameId:", gameId);
       game = { players: [], currentQuestion: this.getRandomQuestion(), questionCount: 0 };
       this.games.set(gameId, game);
     }
     const player = { id: sender.id, name, color, score: 0 };
     game.players.push(player);
+    console.log("Sending gameJoined message to player");
     sender.send(JSON.stringify({ type: 'gameJoined', player, currentQuestion: game.currentQuestion }));
-    this.party.broadcast(JSON.stringify({ type: 'playerList', players: game.players }));
+    console.log("Broadcasting playerList");
+    this.party.broadcast(JSON.stringify({ type: 'playerList', players: game.players }), [sender.id]);
   }
 
   submitAnswer(payload, sender) {
@@ -91,7 +95,9 @@ export default class GameParty extends Party {
   }
 
   getRandomQuestion() {
+    console.log("Getting random question, questions array length:", this.questions.length);
     if (this.questions.length === 0) {
+      console.log("No questions available, returning placeholder");
       return { question: "Loading questions...", answer: 0 };
     }
     return this.questions[0];

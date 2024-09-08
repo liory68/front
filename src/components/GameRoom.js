@@ -18,13 +18,14 @@ function GameRoom() {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
+    console.log("Initializing socket with host:", PARTYKIT_HOST, "and room:", gameId);
     const newSocket = new PartySocket({
       host: PARTYKIT_HOST,
       room: gameId
     });
 
     newSocket.addEventListener('open', () => {
-      console.log("Connected to game room");
+      console.log("Socket opened, sending joinGame message");
       newSocket.send(JSON.stringify({ 
         type: 'joinGame', 
         payload: { gameId, name: playerName, color: getRandomColor() } 
@@ -35,9 +36,10 @@ function GameRoom() {
       console.log("Received message:", event.data);
       try {
         const data = JSON.parse(event.data);
+        console.log("Parsed data:", data);
         handleJsonMessage(data);
       } catch (error) {
-        // If parsing fails, treat it as a plain text message
+        console.error("Error parsing message:", error);
         console.log("Received plain text message:", event.data);
       }
     });
@@ -50,12 +52,15 @@ function GameRoom() {
   }, [gameId, playerName]);
 
   const handleJsonMessage = (data) => {
+    console.log("Handling JSON message:", data);
     switch (data.type) {
       case 'gameJoined':
+        console.log("Game joined, setting current player and question");
         setCurrentPlayer(data.player);
         setCurrentQuestion(data.currentQuestion);
         break;
       case 'playerList':
+        console.log("Updating player list");
         setPlayers(data.players);
         break;
       case 'newQuestion':
